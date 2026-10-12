@@ -1,72 +1,129 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useEffect, useMemo, useState } from 'react';
+import { type Address, maxUint256, parseUnits } from 'viem';
+import { useAccount, useChainId, useReadContract, useSendTransaction, useWriteContract } from 'wagmi';
+import { TOKEN_METADATA, fetchSwapQuote, type TokenKey } from '../lib/swap';
 
-const TOKEN_PRICES = {
-  ETH: 3428.9,
-  BTC: 61240.27,
-  SOL: 168.42,
-  USDC: 1,
-  LINK: 17.82,
-  MATIC: 0.85
-} as const;
+const erc20Abi = [
+  {
+    type: 'function',
+    name: 'allowance',
+    stateMutability: 'view',
+    inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }],
+    outputs: [{ type: 'uint256' }]
+  },
+  {
+    type: 'function',
+    name: 'approve',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }],
+    outputs: [{ type: 'bool' }]
+  }
+] as const;
 
-const TOKEN_INFO = {
-  ETH: { name: 'Ethereum', type: 'Layer 1' },
-  BTC: { name: 'Bitcoin', type: 'Digital Asset' },
-  SOL: { name: 'Solana', type: 'Layer 1' },
-  USDC: { name: 'USD Coin', type: 'Stablecoin' },
-  LINK: { name: 'Chainlink', type: 'Oracle' },
-  MATIC: { name: 'Polygon', type: 'Layer 2' }
-} as const;
-
-type TokenKey = keyof typeof TOKEN_PRICES;
+const TOKEN_KEYS: TokenKey[] = ['ETH', 'BTC', 'SOL', 'USDC', 'LINK', 'MATIC'];
 
 export function SwapWidget() {
   const { isConnected, address } = useAccount();
+  const chainId = useChainId();
+  const { writeContractAsync } = useWriteContract();
+  const { sendTransactionAsync } = useSendTransaction();
+
   const [fromToken, setFromToken] = useState<TokenKey>('ETH');
   const [toToken, setToToken] = useState<TokenKey>('USDC');
   const [fromAmount, setFromAmount] = useState('1.5');
-  const [loading, setLoading] = useState(false);
+  const [quote, setQuote] = useState<Awaited<ReturnType<typeof fetchSwapQuote>> | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [loadingQuote, setLoadingQuote] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const computed = useMemo(() => {
-    const parsed = Number(fromAmount || 0);
-    if (!parsed || fromToken === toToken) {
-      return { rate: 0, toAmount: 0, usdValue: 0, fee: 6.2 };
-    }
-    const numerator = TOKEN_PRICES[fromToken] * parsed;
-    const rate = TOKEN_PRICES[fromToken] / TOKEN_PRICES[toToken];
-    const toAmount = numerator / TOKEN_PRICES[toToken];
-    return {
-      rate: Number.isFinite(rate) ? rate : 0,
-      toAmount: Number.isFinite(toAmount) ? toAmount : 0,
-      usdValue: numerator,
-      fee: 6.2
+  useEffect(() => {
+    const run = async () => {
+      if (!isConnected || !address || !fromAmount || Number(fromAmount) <= 0) {
+        setQuote(null);
+        return;
+      }
+
+      try {
+        setLoadingQuote(true);
+        setQuoteError(null);
+        const nextQuote = await fetchSwapQuote({
+          chainId,
+          sellToken: fromToken,
+          buyToken: toToken,
+          sellAmount: parseUnits(fromAmount, TOKEN_METADATA[fromToken].decimals).toString()
+        });
+        setQuote(nextQuote);
+      } catch (error) {
+        console.error('Quote fetch failed', error);
+        setQuoteError(error instanceof Error ? error.message : 'Unable to fetch quote');
+        setQuote(null);
+      } finally {
+        setLoadingQuote(false);
+      }
     };
-  }, [fromAmount, fromToken, toToken]);
+
+    run();
+  }, [address, chainId, fromAmount, fromToken, isConnected, toToken]);
+
+  const sellTokenAddress = TOKEN_METADATA[fromToken].address[chainId as keyof typeof TOKEN_METADATA[typeof fromToken]['address']];
+  const allowanceTarget = quote?.allowanceTarget;
+
+  const allowanceQuery = useReadContract({
+    address: sellTokenAddress as Address,
+    abi: erc20Abi,
+    functionName: 'allowance',
+    args: [address as Address, allowanceTarget as Address],
+    query: {
+      enabled: Boolean(address && allowanceTarget && sellTokenAddress)
+    }
+  });
+
+  const allowance = allowanceQuery.data ? BigInt(String(allowanceQuery.data)) : 0n;
+  const needsApproval = Boolean(
+    quote &&
+      address &&
+      allowanceTarget &&
+      sellTokenAddress &&
+      BigInt(quote.sellAmount) > allowance
+  );
+
+  const computedToAmount = useMemo(() => {
+    if (!quote) return 0;
+    return Number(quote.buyAmount) / 10 ** TOKEN_METADATA[toToken].decimals;
+  }, [quote, toToken]);
 
   const handleSwap = async () => {
-    if (!isConnected || !address) {
-      alert('Please connect your wallet first');
+    if (!isConnected || !address || !quote) {
+      alert('Please connect your wallet and wait for a valid quote.');
       return;
     }
 
-    setLoading(true);
     try {
-      console.log('Swap initiated:', {
-        from: fromToken,
-        to: toToken,
-        amount: fromAmount,
-        wallet: address
+      setSubmitting(true);
+
+      if (needsApproval && quote.allowanceTarget && sellTokenAddress) {
+        await writeContractAsync({
+          address: sellTokenAddress,
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [quote.allowanceTarget, maxUint256]
+        });
+      }
+
+      await sendTransactionAsync({
+        to: quote.to,
+        data: quote.data,
+        value: quote.value ? BigInt(quote.value) : undefined
       });
-      // In production, this would call a real swap function
-      alert(`Swap preview: ${fromAmount} ${fromToken} → ${computed.toAmount.toFixed(4)} ${toToken}`);
+
+      alert(`Swap submitted successfully. Received approximately ${computedToAmount.toFixed(4)} ${toToken}.`);
     } catch (error) {
-      console.error('Swap error:', error);
-      alert('Swap failed. See console for details.');
+      console.error('Swap execution failed:', error);
+      alert(error instanceof Error ? error.message : 'Swap failed.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -74,35 +131,23 @@ export function SwapWidget() {
     <aside className="panel swap-panel">
       <div className="panel-header">
         <span>Swap</span>
-        <span className="muted">{isConnected ? 'Ready' : 'Connect wallet'}</span>
+        <span className="muted">{isConnected ? 'On-chain ready' : 'Connect wallet'}</span>
       </div>
 
       <div className="swap-box">
         <label>From</label>
         <div className="swap-line">
           <div>
-            <select
-              value={fromToken}
-              onChange={(event) => setFromToken(event.target.value as TokenKey)}
-              disabled={!isConnected}
-            >
-              {Object.entries(TOKEN_PRICES).map(([token]) => (
+            <select value={fromToken} onChange={(event) => setFromToken(event.target.value as TokenKey)} disabled={!isConnected}>
+              {TOKEN_KEYS.map((token) => (
                 <option key={token} value={token}>
                   {token}
                 </option>
               ))}
             </select>
-            <div className="token-sub">{TOKEN_INFO[fromToken].type}</div>
+            <div className="token-sub">{TOKEN_METADATA[fromToken].name}</div>
           </div>
-          <input
-            type="number"
-            value={fromAmount}
-            onChange={(event) => setFromAmount(event.target.value)}
-            placeholder="0.0"
-            disabled={!isConnected}
-            step="0.01"
-            min="0"
-          />
+          <input type="number" value={fromAmount} onChange={(event) => setFromAmount(event.target.value)} placeholder="0.0" disabled={!isConnected} step="0.01" min="0" />
         </div>
       </div>
 
@@ -112,20 +157,16 @@ export function SwapWidget() {
         <label>To</label>
         <div className="swap-line">
           <div>
-            <select
-              value={toToken}
-              onChange={(event) => setToToken(event.target.value as TokenKey)}
-              disabled={!isConnected}
-            >
-              {Object.entries(TOKEN_PRICES).map(([token]) => (
+            <select value={toToken} onChange={(event) => setToToken(event.target.value as TokenKey)} disabled={!isConnected}>
+              {TOKEN_KEYS.map((token) => (
                 <option key={token} value={token}>
                   {token}
                 </option>
               ))}
             </select>
-            <div className="token-sub">{TOKEN_INFO[toToken].type}</div>
+            <div className="token-sub">{TOKEN_METADATA[toToken].name}</div>
           </div>
-          <input value={computed.toAmount.toFixed(toToken === 'USDC' ? 2 : 4)} readOnly placeholder="0.0" />
+          <input value={quote ? (computedToAmount || 0).toFixed(toToken === 'USDC' ? 2 : 4) : '0.00'} readOnly placeholder="0.0" />
         </div>
       </div>
 
@@ -133,23 +174,25 @@ export function SwapWidget() {
         <div>
           <span>Rate</span>
           <strong>
-            1 {fromToken} = {computed.rate.toFixed(2)} {toToken}
+            {quote ? `1 ${fromToken} = ${(Number(quote.buyAmount) / Number(quote.sellAmount || 1)) * 10 ** TOKEN_METADATA[fromToken].decimals / 10 ** TOKEN_METADATA[toToken].decimals}`.slice(0, 12)} ${toToken}` : 'Waiting...'}
           </strong>
         </div>
         <div>
           <span>Network fee</span>
-          <strong>~${computed.fee.toFixed(2)}</strong>
+          <strong>~$6.20</strong>
         </div>
-        {computed.usdValue > 0 && (
+        {quote && (
           <div>
-            <span>USD value</span>
-            <strong>${computed.usdValue.toFixed(2)}</strong>
+            <span>Allowance</span>
+            <strong>{needsApproval ? 'Approval required' : 'Sufficient'}</strong>
           </div>
         )}
       </div>
 
-      <button className="primary-button" onClick={handleSwap} disabled={!isConnected || loading || !fromAmount}>
-        {loading ? 'Processing...' : isConnected ? 'Review swap' : 'Connect wallet to swap'}
+      {quoteError && <div className="error-banner">{quoteError}</div>}
+
+      <button className="primary-button" onClick={handleSwap} disabled={!isConnected || !quote || loadingQuote || submitting || !fromAmount}>
+        {submitting ? 'Submitting...' : loadingQuote ? 'Loading quote...' : needsApproval ? 'Approve & swap' : 'Review swap'}
       </button>
     </aside>
   );
