@@ -1,25 +1,27 @@
-'use client';
+export type MarketItem = {
+  id: string;
+  symbol: string;
+  name: string;
+  price: number;
+  change24h: number;
+  volume: number;
+  marketCap: number;
+  sparkline: number[];
+};
 
-import { useEffect, useState } from 'react';
-import { ChartPanel } from '../components/ChartPanel';
-import { MarketTable } from '../components/MarketTable';
-import { MarketTicker } from '../components/MarketTicker';
-import { WalletPanel } from '../components/WalletPanel';
-import { fetchMarketData, type MarketItem } from '../lib/market';
-
-const defaultMarket: MarketItem[] = [
+const fallbackData: MarketItem[] = [
   {
-    id: 'btc-default',
+    id: 'bitcoin',
     symbol: 'BTC',
     name: 'Bitcoin',
     price: 61240.27,
-    change24h: 2.5,
+    change24h: 2.51,
     volume: 3124000000,
     marketCap: 1215000000000,
     sparkline: [61200, 61430, 61350, 61510, 61740, 61820, 61990, 62140, 62090, 62280]
   },
   {
-    id: 'eth-default',
+    id: 'ethereum',
     symbol: 'ETH',
     name: 'Ethereum',
     price: 3428.9,
@@ -29,7 +31,7 @@ const defaultMarket: MarketItem[] = [
     sparkline: [3390, 3412, 3401, 3440, 3475, 3490, 3515, 3498, 3540, 3562]
   },
   {
-    id: 'sol-default',
+    id: 'solana',
     symbol: 'SOL',
     name: 'Solana',
     price: 168.42,
@@ -37,92 +39,60 @@ const defaultMarket: MarketItem[] = [
     volume: 970000000,
     marketCap: 74100000000,
     sparkline: [174, 172, 171, 170, 171, 175, 173, 169, 167, 168]
+  },
+  {
+    id: 'avalanche-2',
+    symbol: 'AVAX',
+    name: 'Avalanche',
+    price: 38.91,
+    change24h: 0.9,
+    volume: 496000000,
+    marketCap: 14200000000,
+    sparkline: [37.1, 37.5, 38.1, 38.4, 39.0, 38.8, 39.4, 39.7, 38.9, 38.91]
   }
 ];
 
-export default function HomePage() {
-  const [market, setMarket] = useState<MarketItem[]>(defaultMarket);
-  const [loading, setLoading] = useState(true);
+export async function fetchMarketData(): Promise<MarketItem[]> {
+  const ids = 'bitcoin,ethereum,solana,binancecoin,cardano,dogecoin,chainlink,avalanche-2';
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await fetchMarketData();
-        setMarket(data);
-      } catch (error) {
-        console.error('Market fetch failed, falling back to local data', error);
-        setMarket(defaultMarket);
-      } finally {
-        setLoading(false);
-      }
-    };
+  try {
+    const response = await fetch(
+      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&per_page=8&page=1&sparkline=true&price_change_percentage=24h`,
+      { next: { revalidate: 60 } }
+    );
 
-    load();
-    const interval = setInterval(load, 15000);
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
 
-    return () => clearInterval(interval);
-  }, []);
+    const payload = (await response.json()) as Array<{
+      id: string;
+      symbol: string;
+      name: string;
+      current_price: number;
+      price_change_percentage_24h: number | null;
+      total_volume: number | null;
+      market_cap: number | null;
+      sparkline_in_7d?: { price?: number[] };
+    }>;
 
-  const topCoin = market[0] ?? defaultMarket[0];
+    if (!Array.isArray(payload) || payload.length === 0) {
+      return fallbackData;
+    }
 
-  return (
-    <main className="page-shell">
-      <header className="topbar">
-        <div>
-          <div className="eyebrow">Crypto Exchange</div>
-          <h1>Market Pulse</h1>
-        </div>
-        <WalletPanel />
-      </header>
-
-      <section className="overview-grid">
-        <div className="hero-card panel">
-          <div className="hero-header">
-            <span className="chip">Live</span>
-            <span className="muted">Updated every 1.5s</span>
-          </div>
-          <div className="hero-row">
-            <div>
-              <div className="label">Top market</div>
-              <div className="hero-price">${topCoin.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
-            </div>
-            <div className={`trend ${topCoin.change24h >= 0 ? 'up' : 'down'}`}>
-              {topCoin.change24h >= 0 ? '+' : ''}
-              {topCoin.change24h.toFixed(2)}%
-            </div>
-          </div>
-          <div className="stats-row">
-            <div>
-              <div className="label">Volume</div>
-              <div className="value">${(topCoin.volume / 1_000_000).toFixed(1)}M</div>
-            </div>
-            <div>
-              <div className="label">Market cap</div>
-              <div className="value">${(topCoin.marketCap / 1_000_000_000).toFixed(1)}B</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="panel chart-card">
-          <div className="panel-header">
-            <span>Chart</span>
-            <span className="muted">1D</span>
-          </div>
-          <ChartPanel data={topCoin.sparkline ?? [1, 2, 3, 4, 5]} />
-        </div>
-      </section>
-
-      <section className="market-grid">
-        <MarketTicker data={market} loading={loading} />
-      </section>
-
-      <section className="table-section panel">
-        <div className="panel-header">
-          <span>Markets</span>
-          <button className="ghost-button">View all</button>
-        </div>
-        <MarketTable data={market} />
-      </section>
-    </main>
-  );
+    return payload.map((coin) => ({
+      id: coin.id,
+      symbol: (coin.symbol || '').toUpperCase(),
+      name: coin.name,
+      price: Number(coin.current_price ?? 0),
+      change24h: Number(coin.price_change_percentage_24h ?? 0),
+      volume: Number(coin.total_volume ?? 0),
+      marketCap: Number(coin.market_cap ?? 0),
+      sparkline: Array.isArray(coin.sparkline_in_7d?.price)
+        ? coin.sparkline_in_7d.price.slice(-12).map((point) => Number(point))
+        : [1, 2, 3, 4, 5]
+    }));
+  } catch {
+    return fallbackData;
+  }
 }

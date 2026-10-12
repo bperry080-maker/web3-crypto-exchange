@@ -1,34 +1,41 @@
-import type { MarketItem } from '../lib/market';
-
-export function MarketTable({ data }: { data: MarketItem[] }) {
+export function SwapWidget() {
   return (
-    <table className="market-table">
-      <thead>
-        <tr>
-          <th>Asset</th>
-          <th>Price</th>
-          <th>24h</th>
-          <th>Volume</th>
-          <th>Market cap</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((item) => (
-          <tr key={item.id}>
-            <td>
-              <div className="currency">{item.symbol}</div>
-              <div className="symbol">{item.name}</div>
-            </td>
-            <td>${item.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-            <td className={item.change24h >= 0 ? 'trend up' : 'trend down'} style={{ padding: 0 }}>
-              {item.change24h >= 0 ? '+' : ''}
-              {item.change24h.toFixed(2)}%
-            </td>
-            <td>${(item.volume / 1_000_000).toFixed(1)}M</td>
-            <td>${(item.marketCap / 1_000_000_000).toFixed(1)}B</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <aside className="panel swap-panel">
+      <div className="panel-header">
+        <span>Swap</span>
+        <span className="muted">Instant</span>
+      </div>
+
+      <div className="swap-box">
+        <label>From</label>
+        <div className="swap-line">
+          <div>
+            <div className="token-name">ETH</div>
+            <div className="token-sub">Ethereum</div>
+          </div>
+          <input defaultValue="1.25" aria-label="From amount" />
+        </div>
+      </div>
+
+      <div className="swap-divider">⇅</div>
+
+      <div className="swap-box">
+        <label>To</label>
+        <div className="swap-line">
+          <div>
+            <div className="token-name">USDC</div>
+            <div className="token-sub">USD Coin</div>
+          </div>
+          <input defaultValue="4068.00" aria-label="To amount" />
+        </div>
+      </div>
+
+      <div className="swap-stats">
+        <div><span>Rate</span><strong>1 ETH = 3,268 USDC</strong></div>
+        <div><span>Network fee</span><strong>~$6.20</strong></div>
+      </div>
+
+      <button className="primary-button">Connect wallet to swap</button>
+    </aside>
   );
 }

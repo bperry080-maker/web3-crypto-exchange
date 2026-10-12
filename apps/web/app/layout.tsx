@@ -1,4 +1,18 @@
-/// <reference types="next" />
-/// <reference types="next/image-types/global" />
+import './globals.css';
+import type { Metadata } from 'next';
+import { Providers } from './providers';
 
-// NOTE: This file should not be edited.
+export const metadata: Metadata = {
+  title: 'Web3 Crypto Exchange',
+  description: 'Live crypto market dashboard and wallet-connected exchange starter'
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
