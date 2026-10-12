@@ -1,83 +1,12 @@
-import { useMemo, useState } from 'react';
-import { useAccount } from 'wagmi';
-
-const TOKEN_PRICES = {
-  ETH: 3428.9,
-  BTC: 61240.27,
-  SOL: 168.42,
-  USDC: 1,
-  LINK: 17.82
-} as const;
-
-export function SwapWidget() {
-  const { isConnected } = useAccount();
-  const [fromToken, setFromToken] = useState<keyof typeof TOKEN_PRICES>('ETH');
-  const [toToken, setToToken] = useState<keyof typeof TOKEN_PRICES>('USDC');
-  const [fromAmount, setFromAmount] = useState('1.5');
-
-  const computed = useMemo(() => {
-    const parsed = Number(fromAmount || 0);
-    const numerator = TOKEN_PRICES[fromToken] * parsed;
-    const rate = TOKEN_PRICES[fromToken] / TOKEN_PRICES[toToken];
-    const toAmount = fromToken === toToken ? parsed : numerator / TOKEN_PRICES[toToken];
-    return {
-      rate,
-      toAmount: Number.isFinite(toAmount) ? toAmount : 0,
-      usdValue: numerator
-    };
-  }, [fromAmount, fromToken, toToken]);
-
-  return (
-    <aside className="panel swap-panel">
-      <div className="panel-header">
-        <span>Swap</span>
-        <span className="muted">On-chain ready</span>
-      </div>
-
-      <div className="swap-box">
-        <label>From</label>
-        <div className="swap-line">
-          <div>
-            <select value={fromToken} onChange={(event) => setFromToken(event.target.value as keyof typeof TOKEN_PRICES)}>
-              {Object.keys(TOKEN_PRICES).map((token) => (
-                <option key={token} value={token}>
-                  {token}
-                </option>
-              ))}
-            </select>
-            <div className="token-sub">{fromToken === 'USDC' ? 'Stablecoin' : 'Digital asset'}</div>
-          </div>
-          <input value={fromAmount} onChange={(event) => setFromAmount(event.target.value)} aria-label="From amount" />
-        </div>
-      </div>
-
-      <div className="swap-divider">⇅</div>
-
-      <div className="swap-box">
-        <label>To</label>
-        <div className="swap-line">
-          <div>
-            <select value={toToken} onChange={(event) => setToToken(event.target.value as keyof typeof TOKEN_PRICES)}>
-              {Object.keys(TOKEN_PRICES).map((token) => (
-                <option key={token} value={token}>
-                  {token}
-                </option>
-              ))}
-            </select>
-            <div className="token-sub">{toToken === 'USDC' ? 'Stablecoin' : 'Digital asset'}</div>
-          </div>
-          <input value={computed.toAmount.toFixed(toToken === 'USDC' ? 2 : 4)} readOnly aria-label="To amount" />
-        </div>
-      </div>
-
-      <div className="swap-stats">
-        <div><span>Rate</span><strong>1 {fromToken} = {computed.rate.toFixed(fromToken === 'USDC' || toToken === 'USDC' ? 3 : 5)} {toToken}</strong></div>
-        <div><span>Network fee</span><strong>~$6.20</strong></div>
-      </div>
-
-      <button className="primary-button" disabled={!isConnected}>
-        {isConnected ? 'Review swap' : 'Connect wallet to swap'}
-      </button>
-    </aside>
-  );
+.error-banner {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  color: var(--red);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }

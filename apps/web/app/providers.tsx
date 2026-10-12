@@ -4,9 +4,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, http } from 'wagmi';
 import { mainnet, polygon, arbitrum, base, optimism, bsc } from 'wagmi/chains';
 
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '';
+
+if (!projectId && typeof window !== 'undefined') {
+  console.warn(
+    'WalletConnect Project ID not found. Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID in .env.local. ' +
+      'Get one at https://cloud.walletconnect.com'
+  );
+}
+
 const config = getDefaultConfig({
   appName: 'Web3 Crypto Exchange',
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-walletconnect-project-id',
+  projectId: projectId || 'demo-walletconnect-project-id',
   chains: [mainnet, polygon, bsc, optimism, arbitrum, base],
   transports: {
     [mainnet.id]: http(),
