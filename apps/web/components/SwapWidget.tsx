@@ -1,28 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { type Address, maxUint256, parseUnits } from 'viem';
+import { type Address, erc20Abi, maxUint256, parseUnits } from 'viem';
 import { useAccount, useChainId, useReadContract, useSendTransaction, useWriteContract } from 'wagmi';
-import { TOKEN_METADATA, fetchSwapQuote, type TokenKey } from '../lib/swap';
+import { TOKEN_METADATA, fetchSwapQuote, type QuoteResponse, type TokenKey } from '../lib/swap';
 
-const erc20Abi = [
-  {
-    type: 'function',
-    name: 'allowance',
-    stateMutability: 'view',
-    inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }],
-    outputs: [{ type: 'uint256' }]
-  },
-  {
-    type: 'function',
-    name: 'approve',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }],
-    outputs: [{ type: 'bool' }]
-  }
-] as const;
-
-const TOKEN_KEYS: TokenKey[] = ['ETH', 'BTC', 'SOL', 'USDC', 'LINK', 'MATIC'];
+const TOKEN_KEYS: TokenKey[] = ['ETH', 'USDC', 'BTC', 'LINK', 'SOL', 'MATIC'];
 
 export function SwapWidget() {
   const { isConnected, address } = useAccount();
@@ -32,27 +15,31 @@ export function SwapWidget() {
 
   const [fromToken, setFromToken] = useState<TokenKey>('ETH');
   const [toToken, setToToken] = useState<TokenKey>('USDC');
-  const [fromAmount, setFromAmount] = useState('1.5');
-  const [quote, setQuote] = useState<Awaited<ReturnType<typeof fetchSwapQuote>> | null>(null);
+  const [fromAmount, setFromAmount] = useState('1');
+  const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
+  // Fetch quote every 10 seconds for live updates
   useEffect(() => {
-    const run = async () => {
-      if (!isConnected || !address || !fromAmount || Number(fromAmount) <= 0) {
-        setQuote(null);
-        return;
-      }
+    if (!isConnected || !fromAmount || Number(fromAmount) <= 0 || fromToken === toToken) {
+      setQuote(null);
+      return;
+    }
 
+    const fetchQuote = async () => {
       try {
         setLoadingQuote(true);
         setQuoteError(null);
+        const decimals = TOKEN_METADATA[fromToken].decimals;
+        const sellAmount = parseUnits(fromAmount, decimals).toString();
         const nextQuote = await fetchSwapQuote({
           chainId,
           sellToken: fromToken,
           buyToken: toToken,
-          sellAmount: parseUnits(fromAmount, TOKEN_METADATA[fromToken].decimals).toString()
+          sellAmount
         });
         setQuote(nextQuote);
       } catch (error) {
@@ -64,25 +51,30 @@ export function SwapWidget() {
       }
     };
 
-    run();
+    fetchQuote();
+    const interval = setInterval(fetchQuote, 10000); // Refresh quote every 10 seconds
+    return () => clearInterval(interval);
   }, [address, chainId, fromAmount, fromToken, isConnected, toToken]);
 
-  const sellTokenAddress = TOKEN_METADATA[fromToken].address[chainId as keyof typeof TOKEN_METADATA[typeof fromToken]['address']];
-  const allowanceTarget = quote?.allowanceTarget;
+  const sellTokenAddress = TOKEN_METADATA[fromToken].address[
+    chainId as keyof typeof TOKEN_METADATA[typeof fromToken]['address']
+  ] as Address;
+  const allowanceTarget = quote?.allowanceTarget as Address | undefined;
 
   const allowanceQuery = useReadContract({
-    address: sellTokenAddress as Address,
+    address: sellTokenAddress,
     abi: erc20Abi,
     functionName: 'allowance',
     args: [address as Address, allowanceTarget as Address],
     query: {
-      enabled: Boolean(address && allowanceTarget && sellTokenAddress)
+      enabled: Boolean(address && allowanceTarget && sellTokenAddress && fromToken !== 'ETH')
     }
   });
 
   const allowance = allowanceQuery.data ? BigInt(String(allowanceQuery.data)) : 0n;
   const needsApproval = Boolean(
     quote &&
+      fromToken !== 'ETH' &&
       address &&
       allowanceTarget &&
       sellTokenAddress &&
@@ -94,6 +86,27 @@ export function SwapWidget() {
     return Number(quote.buyAmount) / 10 ** TOKEN_METADATA[toToken].decimals;
   }, [quote, toToken]);
 
+  const handleApprove = async () => {
+    if (!sellTokenAddress || !allowanceTarget) return;
+
+    try {
+      setSubmitting(true);
+      await writeContractAsync({
+        address: sellTokenAddress,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [allowanceTarget, maxUint256]
+      });
+      // Refetch allowance after approval
+      allowanceQuery.refetch();
+    } catch (error) {
+      console.error('Approval failed:', error);
+      alert(error instanceof Error ? error.message : 'Approval failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSwap = async () => {
     if (!isConnected || !address || !quote) {
       alert('Please connect your wallet and wait for a valid quote.');
@@ -102,23 +115,17 @@ export function SwapWidget() {
 
     try {
       setSubmitting(true);
+      setTxHash(null);
 
-      if (needsApproval && quote.allowanceTarget && sellTokenAddress) {
-        await writeContractAsync({
-          address: sellTokenAddress,
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [quote.allowanceTarget, maxUint256]
-        });
-      }
-
-      await sendTransactionAsync({
+      const tx = await sendTransactionAsync({
         to: quote.to,
         data: quote.data,
-        value: quote.value ? BigInt(quote.value) : undefined
+        value: quote.value ? BigInt(quote.value) : 0n
       });
 
-      alert(`Swap submitted successfully. Received approximately ${computedToAmount.toFixed(4)} ${toToken}.`);
+      setTxHash(tx);
+      alert(`✅ Swap submitted! Transaction: ${tx}\n\nReceived approximately ${computedToAmount.toFixed(4)} ${toToken}.`);
+      setFromAmount('1');
     } catch (error) {
       console.error('Swap execution failed:', error);
       alert(error instanceof Error ? error.message : 'Swap failed.');
@@ -127,11 +134,17 @@ export function SwapWidget() {
     }
   };
 
+  const rate = useMemo(() => {
+    if (!quote) return '0';
+    const rateBN = (Number(quote.buyAmount) / Number(quote.sellAmount)) * 10 ** TOKEN_METADATA[fromToken].decimals / 10 ** TOKEN_METADATA[toToken].decimals;
+    return rateBN.toFixed(6);
+  }, [quote, fromToken, toToken]);
+
   return (
     <aside className="panel swap-panel">
       <div className="panel-header">
         <span>Swap</span>
-        <span className="muted">{isConnected ? 'On-chain ready' : 'Connect wallet'}</span>
+        <span className="muted">Live • {isConnected ? 'Connected' : 'Disconnected'}</span>
       </div>
 
       <div className="swap-box">
@@ -147,7 +160,15 @@ export function SwapWidget() {
             </select>
             <div className="token-sub">{TOKEN_METADATA[fromToken].name}</div>
           </div>
-          <input type="number" value={fromAmount} onChange={(event) => setFromAmount(event.target.value)} placeholder="0.0" disabled={!isConnected} step="0.01" min="0" />
+          <input
+            type="number"
+            value={fromAmount}
+            onChange={(event) => setFromAmount(event.target.value)}
+            placeholder="0.0"
+            disabled={!isConnected}
+            step="0.01"
+            min="0"
+          />
         </div>
       </div>
 
@@ -173,27 +194,34 @@ export function SwapWidget() {
       <div className="swap-stats">
         <div>
           <span>Rate</span>
-          <strong>
-            {quote ? `1 ${fromToken} = ${(Number(quote.buyAmount) / Number(quote.sellAmount || 1)) * 10 ** TOKEN_METADATA[fromToken].decimals / 10 ** TOKEN_METADATA[toToken].decimals}`.slice(0, 12)} ${toToken}` : 'Waiting...'}
-          </strong>
+          <strong>{loadingQuote ? 'Updating...' : `1 ${fromToken} = ${rate} ${toToken}`}</strong>
         </div>
         <div>
-          <span>Network fee</span>
-          <strong>~$6.20</strong>
+          <span>Network</span>
+          <strong>{chainId === 1 ? 'Ethereum' : chainId === 137 ? 'Polygon' : chainId === 56 ? 'BSC' : 'Unknown'}</strong>
         </div>
         {quote && (
           <div>
-            <span>Allowance</span>
-            <strong>{needsApproval ? 'Approval required' : 'Sufficient'}</strong>
+            <span>Slippage</span>
+            <strong>~0.5%</strong>
           </div>
         )}
       </div>
 
-      {quoteError && <div className="error-banner">{quoteError}</div>}
+      {quoteError && <div className="error-banner">⚠️ {quoteError}</div>}
 
-      <button className="primary-button" onClick={handleSwap} disabled={!isConnected || !quote || loadingQuote || submitting || !fromAmount}>
-        {submitting ? 'Submitting...' : loadingQuote ? 'Loading quote...' : needsApproval ? 'Approve & swap' : 'Review swap'}
-      </button>
+      {txHash && <div className="success-banner">✅ Transaction: {txHash.slice(0, 8)}...</div>}
+
+      <div className="button-group">
+        {needsApproval && (
+          <button className="primary-button" onClick={handleApprove} disabled={submitting}>
+            {submitting ? 'Approving...' : 'Approve token'}
+          </button>
+        )}
+        <button className="primary-button" onClick={handleSwap} disabled={!isConnected || !quote || loadingQuote || submitting || !fromAmount || needsApproval} style={{ width: needsApproval ? 'auto' : '100%' }}>
+          {submitting ? 'Submitting...' : loadingQuote ? 'Getting quote...' : 'Swap now'}
+        </button>
+      </div>
     </aside>
   );
 }

@@ -1,32 +1,26 @@
 # Web3 Crypto Exchange
 
-A full-stack Web3 cryptocurrency exchange dashboard with wallet connection, live market data, and swap functionality.
+A complete Web3 cryptocurrency exchange dashboard with wallet connection, live market data, and real on-chain swap functionality.
 
 ## Features
 
-- 🪙 **Live Market Data**: Real-time crypto prices from CoinGecko
-- 💼 **Wallet Connection**: RainbowKit + wagmi + viem integration
-- 📊 **Trading Dashboard**: Market overview, charts, and price tickers
-- 🔄 **Swap Interface**: Token exchange with real-time quote calculation
+- 🔗 **Real Wallet Connection**: RainbowKit + wagmi + viem integration
+- 📊 **Live Market Data**: Real-time crypto prices from CoinGecko (updates every 15s)
+- 💱 **On-Chain Swaps**: Real Ethereum mainnet swaps via 0x API
+- 🪙 **Token Support**: USDC, BTC, ETH, LINK, SOL, MATIC
+- ⛓️ **Multi-Chain**: Ethereum, Polygon, BNB, Optimism, Arbitrum, Base
 - 💰 **Portfolio Tracking**: Connected wallet balance and asset monitoring
-- 🌐 **Multi-chain**: Ethereum, Polygon, BNB Chain, Optimism, Arbitrum, Base
-
-## Tech Stack
-
-- **Frontend**: Next.js 14 + React 18 + TypeScript
-- **Wallet**: RainbowKit + wagmi + viem
-- **Data**: CoinGecko API for live market feeds
-- **Styling**: Custom CSS with dark theme
-- **Backend**: Node.js + Express (for real-time updates)
+- 📈 **Trading Charts**: Price sparklines and market overview
+- ✅ **Smart Approvals**: Auto-detect when token approval is needed
 
 ## Quick Start
 
-### 1. Get a WalletConnect Project ID
+### 1. Get Environment Keys
 
-1. Go to [WalletConnect Cloud](https://cloud.walletconnect.com)
-2. Sign up or log in
-3. Create a new project
-4. Copy your Project ID
+**WalletConnect Project ID** (required for wallet connection):
+- Go to https://cloud.walletconnect.com
+- Create a new project
+- Copy your Project ID
 
 ### 2. Setup Environment
 
@@ -34,10 +28,19 @@ A full-stack Web3 cryptocurrency exchange dashboard with wallet connection, live
 cp .env.example .env.local
 ```
 
-Edit `.env.local` and add:
+Edit `.env.local` and add your keys:
 
 ```env
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id_from_step_1
+# Required
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
+
+# Optional (defaults to public RPC endpoints)
+NEXT_PUBLIC_MAINNET_RPC_URL=https://eth.llamarpc.com
+NEXT_PUBLIC_POLYGON_RPC_URL=https://polygon-rpc.com
+NEXT_PUBLIC_BSC_RPC_URL=https://bsc-dataseed.binance.org
+NEXT_PUBLIC_OPTIMISM_RPC_URL=https://mainnet.optimism.io
+NEXT_PUBLIC_ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc
+NEXT_PUBLIC_BASE_RPC_URL=https://mainnet.base.org
 ```
 
 ### 3. Install & Run
@@ -59,95 +62,147 @@ npm run dev
 
 ### Connect Your Wallet
 
-1. Click the "Connect Wallet" button in the top-right
-2. Select your wallet provider (MetaMask, Wallet Connect, etc.)
+1. Click **Connect Wallet** in the top-right corner
+2. Choose your wallet (MetaMask, WalletConnect, Coinbase, etc.)
 3. Approve the connection in your wallet
-4. Your balance and address will display
-
-### View Markets
-
-- See top 8 cryptocurrencies by market cap
-- Live price updates every 15 seconds
-- 24-hour price change indicators
-- Candlestick-style charts
+4. Your balance and chain are now displayed
 
 ### Execute a Swap
 
-1. Connect your wallet first
+1. Wallet must be connected to Ethereum Mainnet
 2. Select "From" token (e.g., ETH)
 3. Select "To" token (e.g., USDC)
 4. Enter amount
-5. Review the quote and network fee
-6. Click "Review swap" to proceed
+5. Wait for live quote (updates every 10 seconds)
+6. If needed, click "Approve token" first
+7. Click "Swap now" to execute
+8. Sign transaction in your wallet
+9. Done! Transaction hash displayed on success
 
-## API Endpoints
+### View Markets
 
-- `GET /api/health` - Server health check
-- `GET /api/market` - Current market data
-- `WS ws://localhost:4000` - Live market updates via WebSocket
+- See top 6 cryptocurrencies by market cap
+- Live price updates every 15 seconds
+- 24-hour price change indicators
+- Market volume and market cap
+- Sparkline charts showing price history
 
-## Environment Variables
+## Supported Tokens
 
-```env
-# Required: WalletConnect Project ID
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
+| Token | Chain | Address |
+|-------|-------|----------|
+| ETH | Mainnet | 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 |
+| USDC | Mainnet | 0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 |
+| BTC | Mainnet | 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599 |
+| LINK | Mainnet | 0x514910771AF9Ca656af840dff83E8264EcF986CA |
+| SOL | Mainnet | 0xD31a59c85AE9D8edEFeC411D448f90841571b89c |
+| MATIC | Mainnet | 0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0 |
 
-# Optional: Alchemy API key for enhanced RPC
-NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_key
-```
+## Tech Stack
 
-## Supported Chains
+- **Frontend**: Next.js 14 + React 18 + TypeScript
+- **Wallet**: RainbowKit + wagmi + viem
+- **Swaps**: 0x API for real on-chain quotes and execution
+- **Market Data**: CoinGecko API for live prices
+- **Styling**: Custom CSS with dark theme
+- **Backend**: Node.js + Express (for real-time updates)
 
-- Ethereum (Mainnet)
-- Polygon
-- BNB Chain
-- Optimism
-- Arbitrum
-- Base
+## API Integrations
 
-## Next Steps
+### CoinGecko (Market Data)
+- Free tier, no API key required
+- Updates every 15 seconds
+- Real-time prices, volume, market cap
 
-- [ ] Integrate real swap quotes (Uniswap API or 0x)
-- [ ] Add transaction history
-- [ ] Implement token search/filter
-- [ ] Add price alerts
-- [ ] Deploy to production
-- [ ] Add mobile support
-- [ ] Implement portfolio analytics
+### 0x API (Swap Quotes)
+- Free tier, no API key required
+- Real swap quotes via 0x protocol
+- Multi-chain support: Ethereum, Polygon, BSC, Optimism, Arbitrum, Base
+- Automatic routing through best price aggregators
 
-## Project Structure
+## Transaction Flow
 
-```
-apps/
-├── web/                 # Next.js frontend
-│   ├── app/            # Pages and layout
-│   ├── components/     # React components
-│   ├── lib/           # Utilities and hooks
-│   └── public/        # Static assets
-└── server/            # Node.js backend
-    └── src/           # Server code
-```
+1. **Quote Fetch**: User selects tokens and amount
+   - App fetches quote from 0x API
+   - Quote updates live every 10 seconds
+
+2. **Allowance Check**: For ERC-20 tokens
+   - App checks current allowance
+   - If insufficient, "Approve" button appears
+
+3. **Token Approval** (if needed)
+   - User clicks "Approve"
+   - Signs approval transaction
+   - Waits for confirmation
+
+4. **Swap Execution**
+   - User clicks "Swap now"
+   - Wallet prompts to sign swap transaction
+   - Transaction submitted to 0x router
+   - User receives confirmation and tx hash
+
+## Important Notes
+
+### Mainnet Only (For Now)
+- This app currently swaps on **Ethereum Mainnet**
+- Real ETH/USDC/tokens will be sent
+- Always test with small amounts first
+- Gas fees apply to all transactions
+
+### Gas Fees
+- Approval transaction: ~50,000 gas
+- Swap transaction: ~200,000 gas
+- Gas price depends on network congestion
+- Current rates shown before signing
+
+### Testing
+- For safe testing, use a testnet instead
+- Request testnet tokens from faucets
+- Deploy on Sepolia (testnet) first
 
 ## Troubleshooting
 
 ### "Failed to connect wallet"
-
 - Ensure WalletConnect Project ID is set in `.env.local`
 - Check that your wallet extension is installed
 - Try refreshing the page
 
-### "Market data not loading"
-
-- Backend server might be down: check http://localhost:4000/api/health
-- CoinGecko API might be rate-limited; wait a few seconds
+### "Quote not loading"
+- Check network connection
+- Ensure you're on Ethereum Mainnet
+- 0x API might be rate-limited; wait a few seconds
 - Check browser console for errors
 
-### "Swap button disabled"
+### "Approval failed"
+- Insufficient gas for approval
+- Token already approved (unusual)
+- Network error or wallet rejected
 
-- Wallet must be connected first
-- Ensure you have the required token balance
-- Switch to a supported chain
+### "Swap failed"
+- Insufficient balance or allowance
+- Slippage too high
+- Network congestion
+- Wallet rejected transaction
+
+## Next Steps
+
+- [ ] Add testnet support (Sepolia)
+- [ ] Implement token search
+- [ ] Add transaction history
+- [ ] Deploy to production
+- [ ] Add more chains (Polygon, BSC, etc.)
+- [ ] Portfolio analytics and charts
+- [ ] Price alerts
+- [ ] Mobile app version
 
 ## License
 
 MIT
+
+## Support
+
+For issues or questions:
+1. Check browser console for errors
+2. Verify environment variables are set
+3. Ensure wallet is on Ethereum Mainnet
+4. Test with small amounts first
