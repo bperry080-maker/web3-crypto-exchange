@@ -1,31 +1,35 @@
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useBalance } from 'wagmi';
 
-export function WalletPanel() {
-  const { address, isConnected, chain } = useAccount();
-  const { data: balance } = useBalance({
-    address,
-    query: { enabled: Boolean(address) }
-  });
+export function PortfolioCard() {
+  const { address, isConnected } = useAccount();
+  const { data: balance } = useBalance({ address, query: { enabled: Boolean(address) } });
 
   return (
-    <div className="wallet-panel">
-      <div className="wallet-meta">
-        {isConnected ? (
-          <>
-            <div className="wallet-address">{address?.slice(0, 6)}...{address?.slice(-4)}</div>
-            <div className="wallet-balance">
-              {chain?.name ?? 'Connected'} · {balance ? `${Number(balance.formatted).toFixed(3)} ${balance.symbol}` : 'Balance loading'}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="wallet-address">Wallet disconnected</div>
-            <div className="wallet-balance">Connect to trade on-chain</div>
-          </>
-        )}
+    <aside className="panel portfolio-panel">
+      <div className="panel-header">
+        <span>Portfolio</span>
+        <span className="muted">Live</span>
       </div>
-      <ConnectButton showBalance={false} />
-    </div>
+
+      <div className="portfolio-amount">
+        ${isConnected && balance ? Number(balance.formatted).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.00'}
+      </div>
+
+      <div className="portfolio-meta">
+        <span>Net worth</span>
+        <strong>{isConnected ? 'Wallet connected' : 'Awaiting connection'}</strong>
+      </div>
+
+      <div className="portfolio-stat-grid">
+        <div>
+          <small>Assets</small>
+          <strong>{isConnected ? '3' : '0'}</strong>
+        </div>
+        <div>
+          <small>24h P/L</small>
+          <strong className="positive">+2.4%</strong>
+        </div>
+      </div>
+    </aside>
   );
 }

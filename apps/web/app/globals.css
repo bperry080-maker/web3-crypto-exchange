@@ -1,98 +1,83 @@
-export type MarketItem = {
-  id: string;
-  symbol: string;
-  name: string;
-  price: number;
-  change24h: number;
-  volume: number;
-  marketCap: number;
-  sparkline: number[];
-};
+import { useMemo, useState } from 'react';
+import { useAccount } from 'wagmi';
 
-const fallbackData: MarketItem[] = [
-  {
-    id: 'bitcoin',
-    symbol: 'BTC',
-    name: 'Bitcoin',
-    price: 61240.27,
-    change24h: 2.51,
-    volume: 3124000000,
-    marketCap: 1215000000000,
-    sparkline: [61200, 61430, 61350, 61510, 61740, 61820, 61990, 62140, 62090, 62280]
-  },
-  {
-    id: 'ethereum',
-    symbol: 'ETH',
-    name: 'Ethereum',
-    price: 3428.9,
-    change24h: 1.8,
-    volume: 1809000000,
-    marketCap: 411000000000,
-    sparkline: [3390, 3412, 3401, 3440, 3475, 3490, 3515, 3498, 3540, 3562]
-  },
-  {
-    id: 'solana',
-    symbol: 'SOL',
-    name: 'Solana',
-    price: 168.42,
-    change24h: -0.7,
-    volume: 970000000,
-    marketCap: 74100000000,
-    sparkline: [174, 172, 171, 170, 171, 175, 173, 169, 167, 168]
-  },
-  {
-    id: 'avalanche-2',
-    symbol: 'AVAX',
-    name: 'Avalanche',
-    price: 38.91,
-    change24h: 0.9,
-    volume: 496000000,
-    marketCap: 14200000000,
-    sparkline: [37.1, 37.5, 38.1, 38.4, 39.0, 38.8, 39.4, 39.7, 38.9, 38.91]
-  }
-];
+const TOKEN_PRICES = {
+  ETH: 3428.9,
+  BTC: 61240.27,
+  SOL: 168.42,
+  USDC: 1,
+  LINK: 17.82
+} as const;
 
-export async function fetchMarketData(): Promise<MarketItem[]> {
-  const ids = 'bitcoin,ethereum,solana,binancecoin,cardano,dogecoin,chainlink,avalanche-2';
+export function SwapWidget() {
+  const { isConnected } = useAccount();
+  const [fromToken, setFromToken] = useState<keyof typeof TOKEN_PRICES>('ETH');
+  const [toToken, setToToken] = useState<keyof typeof TOKEN_PRICES>('USDC');
+  const [fromAmount, setFromAmount] = useState('1.5');
 
-  try {
-    const response = await fetch(
-      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&per_page=8&page=1&sparkline=true&price_change_percentage=24h`,
-      { next: { revalidate: 60 } }
-    );
+  const computed = useMemo(() => {
+    const parsed = Number(fromAmount || 0);
+    const numerator = TOKEN_PRICES[fromToken] * parsed;
+    const rate = TOKEN_PRICES[fromToken] / TOKEN_PRICES[toToken];
+    const toAmount = fromToken === toToken ? parsed : numerator / TOKEN_PRICES[toToken];
+    return {
+      rate,
+      toAmount: Number.isFinite(toAmount) ? toAmount : 0,
+      usdValue: numerator
+    };
+  }, [fromAmount, fromToken, toToken]);
 
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
-    }
+  return (
+    <aside className="panel swap-panel">
+      <div className="panel-header">
+        <span>Swap</span>
+        <span className="muted">On-chain ready</span>
+      </div>
 
-    const payload = (await response.json()) as Array<{
-      id: string;
-      symbol: string;
-      name: string;
-      current_price: number;
-      price_change_percentage_24h: number | null;
-      total_volume: number | null;
-      market_cap: number | null;
-      sparkline_in_7d?: { price?: number[] };
-    }>;
+      <div className="swap-box">
+        <label>From</label>
+        <div className="swap-line">
+          <div>
+            <select value={fromToken} onChange={(event) => setFromToken(event.target.value as keyof typeof TOKEN_PRICES)}>
+              {Object.keys(TOKEN_PRICES).map((token) => (
+                <option key={token} value={token}>
+                  {token}
+                </option>
+              ))}
+            </select>
+            <div className="token-sub">{fromToken === 'USDC' ? 'Stablecoin' : 'Digital asset'}</div>
+          </div>
+          <input value={fromAmount} onChange={(event) => setFromAmount(event.target.value)} aria-label="From amount" />
+        </div>
+      </div>
 
-    if (!Array.isArray(payload) || payload.length === 0) {
-      return fallbackData;
-    }
+      <div className="swap-divider">⇅</div>
 
-    return payload.map((coin) => ({
-      id: coin.id,
-      symbol: (coin.symbol || '').toUpperCase(),
-      name: coin.name,
-      price: Number(coin.current_price ?? 0),
-      change24h: Number(coin.price_change_percentage_24h ?? 0),
-      volume: Number(coin.total_volume ?? 0),
-      marketCap: Number(coin.market_cap ?? 0),
-      sparkline: Array.isArray(coin.sparkline_in_7d?.price)
-        ? coin.sparkline_in_7d.price.slice(-12).map((point) => Number(point))
-        : [1, 2, 3, 4, 5]
-    }));
-  } catch {
-    return fallbackData;
-  }
+      <div className="swap-box">
+        <label>To</label>
+        <div className="swap-line">
+          <div>
+            <select value={toToken} onChange={(event) => setToToken(event.target.value as keyof typeof TOKEN_PRICES)}>
+              {Object.keys(TOKEN_PRICES).map((token) => (
+                <option key={token} value={token}>
+                  {token}
+                </option>
+              ))}
+            </select>
+            <div className="token-sub">{toToken === 'USDC' ? 'Stablecoin' : 'Digital asset'}</div>
+          </div>
+          <input value={computed.toAmount.toFixed(toToken === 'USDC' ? 2 : 4)} readOnly aria-label="To amount" />
+        </div>
+      </div>
+
+      <div className="swap-stats">
+        <div><span>Rate</span><strong>1 {fromToken} = {computed.rate.toFixed(fromToken === 'USDC' || toToken === 'USDC' ? 3 : 5)} {toToken}</strong></div>
+        <div><span>Network fee</span><strong>~$6.20</strong></div>
+      </div>
+
+      <button className="primary-button" disabled={!isConnected}>
+        {isConnected ? 'Review swap' : 'Connect wallet to swap'}
+      </button>
+    </aside>
+  );
 }
