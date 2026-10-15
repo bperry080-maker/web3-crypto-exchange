@@ -16,17 +16,21 @@ export async function POST(request: NextRequest) {
   if (!key) return NextResponse.json({ error: 'Quote service is not configured.' }, { status: 503 });
   if (allowed.length < 2) return NextResponse.json({ error: 'Server token allowlist is not configured.' }, { status: 503 });
 
-  let body: Record<string, unknown>;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
   }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+  const input = body as Record<string, unknown>;
 
-  const tokenIn = typeof body.tokenIn === 'string' ? body.tokenIn.toLowerCase() : '';
-  const tokenOut = typeof body.tokenOut === 'string' ? body.tokenOut.toLowerCase() : '';
-  const amount = typeof body.amount === 'string' ? body.amount : '';
-  const wallet = typeof body.swapper === 'string' ? body.swapper : '';
+  const tokenIn = typeof input.tokenIn === 'string' ? input.tokenIn.toLowerCase() : '';
+  const tokenOut = typeof input.tokenOut === 'string' ? input.tokenOut.toLowerCase() : '';
+  const amount = typeof input.amount === 'string' ? input.amount : '';
+  const wallet = typeof input.swapper === 'string' ? input.swapper : '';
 
   if (!ADDRESS.test(tokenIn) || !ADDRESS.test(tokenOut) || tokenIn === tokenOut) {
     return NextResponse.json({ error: 'Choose two different valid token addresses.' }, { status: 400 });
