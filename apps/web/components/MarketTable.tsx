@@ -1,22 +1,5 @@
 import type { MarketItem } from '../lib/market';
 
-export function PriceCard({ item }: { item: MarketItem }) {
-  return (
-    <div className="ticker-card">
-      <div className="price-row">
-        <div>
-          <div className="currency">{item.symbol}</div>
-          <div className="symbol">{item.name}</div>
-        </div>
-        <div className={`change ${item.change24h >= 0 ? 'up' : 'down'}`}>
-          {item.change24h >= 0 ? '+' : ''}
-          {item.change24h.toFixed(2)}%
-        </div>
-      </div>
-
-      <div className="price-value" style={{ marginTop: 18 }}>
-        ${item.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-      </div>
-    </div>
-  );
+export function MarketTable({ data }: { data: MarketItem[] }) {
+  return <div className="table-wrap"><table><thead><tr><th>Asset</th><th>Price</th><th>24h</th></tr></thead><tbody>{data.map((item) => <tr key={item.id}><td>{item.name} ({item.symbol})</td><td>${item.price.toLocaleString()}</td><td>{item.change24h.toFixed(2)}%</td></tr>)}</tbody></table></div>;
 }
