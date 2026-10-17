@@ -1,109 +1,22 @@
-import express from 'express';
-import cors from 'cors';
-import { WebSocketServer } from 'ws';
-
-const app = express();
-const PORT = process.env.PORT || 4000;
-
-app.use(cors());
-app.use(express.json());
-
-const coinCatalog = [
-  { symbol: 'BTC', name: 'Bitcoin', price: 61240.27 },
-  { symbol: 'ETH', name: 'Ethereum', price: 3428.9 },
-  { symbol: 'SOL', name: 'Solana', price: 168.42 },
-  { symbol: 'BNB', name: 'BNB', price: 602.18 },
-  { symbol: 'AVAX', name: 'Avalanche', price: 38.91 },
-  { symbol: 'LINK', name: 'Chainlink', price: 17.82 },
-  { symbol: 'ADA', name: 'Cardano', price: 0.74 },
-  { symbol: 'DOGE', name: 'Dogecoin', price: 0.16 }
-];
-
-const buildSparkline = (basePrice) => {
-  const values = [];
-  let point = basePrice;
-
-  for (let i = 0; i < 24; i += 1) {
-    point = Math.max(0.01, point * (1 + (Math.random() - 0.45) * 0.06));
-    values.push(Number(point.toFixed(2)));
+{
+  "name": "@crypto/web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.15",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.12",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "typescript": "5.5.4"
   }
-
-  return values;
-};
-
-const seedMarketData = () =>
-  coinCatalog.map((coin, index) => ({
-    id: `${coin.symbol.toLowerCase()}-${index}`,
-    symbol: coin.symbol,
-    name: coin.name,
-    price: coin.price,
-    change24h: Number((Math.random() * 12 - 4.5).toFixed(2)),
-    volume: Number((coin.price * (20 + index * 8) * (Math.random() * 1.5 + 0.8)).toFixed(2)),
-    marketCap: Number((coin.price * (1500000 + index * 90000)).toFixed(2)),
-    sparkline: buildSparkline(coin.price)
-  }));
-
-let marketData = seedMarketData();
-
-const emitMarketUpdate = (socketServer) => {
-  if (!socketServer) return;
-
-  const payload = JSON.stringify({ type: 'market-update', data: marketData });
-  socketServer.clients.forEach((client) => {
-    if (client.readyState === 1) {
-      client.send(payload);
-    }
-  });
-};
-
-const updateMarketData = () => {
-  marketData = marketData.map((coin, index) => {
-    const drift = (Math.random() - 0.5) * 0.04;
-    const nextPrice = Math.max(0.01, coin.price * (1 + drift));
-
-    const nextSparkline = [...coin.sparkline.slice(1), Number(nextPrice.toFixed(2))];
-
-    return {
-      ...coin,
-      price: Number(nextPrice.toFixed(2)),
-      change24h: Number((coin.change24h + (Math.random() - 0.5) * 1.2).toFixed(2)),
-      volume: Number((coin.volume * (1 + (Math.random() - 0.5) * 0.06)).toFixed(2)),
-      marketCap: Number((nextPrice * (1500000 + index * 90000)).toFixed(2)),
-      sparkline: nextSparkline
-    };
-  });
-};
-
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.get('/api/market', (req, res) => {
-  res.json({
-    data: marketData,
-    updatedAt: new Date().toISOString()
-  });
-});
-
-const server = app.listen(PORT, () => {
-  console.log(`Market server listening on http://localhost:${PORT}`);
-});
-
-const socketServer = new WebSocketServer({ server });
-
-socketServer.on('connection', (socket) => {
-  socket.send(JSON.stringify({ type: 'market-update', data: marketData }));
-});
-
-setInterval(() => {
-  updateMarketData();
-  emitMarketUpdate(socketServer);
-}, 1500);
-
-process.on('SIGINT', () => {
-  server.close(() => process.exit(0));
-});
+}
