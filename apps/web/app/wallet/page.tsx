@@ -18,10 +18,6 @@ const BNB_CHAIN_ID = '0x38';
 const BNB_CHAIN_NUMBER = 56;
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
-function shortenAddress(address: string) {
-  return address.length > 12 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
-}
-
 function toWeiHex(amount: string): string {
   // Accept ordinary decimal BNB values only; avoid floating-point conversion.
   if (!/^\d+(\.\d{1,18})?$/.test(amount)) {
@@ -156,9 +152,25 @@ export default function WalletConnectPage() {
 
     setBusy(true);
     try {
+      // Re-check the active network and account immediately before requesting a transfer.
+      // The wallet may have changed networks/accounts while the confirmation dialog was open.
+      const currentChain = String(await window.ethereum.request({ method: 'eth_chainId' }));
+      const currentAccounts = (await window.ethereum.request({ method: 'eth_accounts' })) as string[];
+      const currentAddress = currentAccounts?.[0] ?? '';
+      if (currentChain.toLowerCase() !== BNB_CHAIN_ID) {
+        setChainId(currentChain);
+        setMessage('Transfer stopped: your wallet is no longer on BNB Smart Chain Mainnet (chain ID 56). Switch networks and review again.');
+        return;
+      }
+      if (!currentAddress || currentAddress.toLowerCase() !== address.toLowerCase()) {
+        setAddress(currentAddress);
+        setMessage('Transfer stopped: the active wallet account changed. Review the address and start again.');
+        return;
+      }
+      setChainId(currentChain);
       const txHash = await window.ethereum.request({
         method: 'eth_sendTransaction',
-        params: [{ from: address, to: recipient, value }],
+        params: [{ from: currentAddress, to: recipient, value }],
       });
       setMessage(typeof txHash === 'string'
         ? `Wallet submitted the transaction. Transaction hash: ${txHash}`
