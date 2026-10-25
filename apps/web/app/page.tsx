@@ -1,4 +1,5 @@
 import WalletMonitor from '../components/WalletMonitor';
+import TokenLookup from '../components/TokenLookup';
 
 export default function HomePage() {
   return (
@@ -12,9 +13,10 @@ export default function HomePage() {
         <span className="chip">Read only</span>
       </header>
       <WalletMonitor />
+      <TokenLookup />
       <footer className="footer-note">
-        Public blockchain data only. This report does not connect a wallet, sign transactions, or move funds.
-        Token coverage depends on RPC provider support. USD valuations are not included in this first version.
+        Public blockchain data only. These tools do not connect a wallet, sign transactions, or move funds.
+        Token coverage and market data depend on configured providers and upstream availability.
       </footer>
     </main>
   );
