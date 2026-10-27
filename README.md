@@ -54,7 +54,6 @@ Never prefix secrets with `NEXT_PUBLIC_`. Never commit `.env.local` or API keys.
 - Displays reported quantities, USD price/value estimates, token type, network and raw balance.
 - The current UI requests page 1 with up to 100 holdings. Use pagination for larger portfolios.
 - CoinGecko's coverage and pricing depend on its supported networks, token resolution and API plan. Values are estimates, not guaranteed sale proceeds or withdrawal balances. This endpoint does not prove ownership.
-- The extra `netlify/functions/wallet-balances.mjs` function is also available for Netlify Functions-style invocation; the Next.js UI uses the `/api/wallet-balances` route.
 
 ## Before public launch
 
