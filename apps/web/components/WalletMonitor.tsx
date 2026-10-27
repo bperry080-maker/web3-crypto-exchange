@@ -65,6 +65,48 @@ export default function WalletMonitor() {
     finally { setCoinGeckoLoading(false); }
   }
 
+  async function refreshAllFunds() {
+    const wallet = address.trim();
+    setError('');
+    setCoinGeckoError('');
+    setReport(null);
+    setCoinGeckoReport(null);
+    if (!ADDRESS.test(wallet)) {
+      setError('Enter a valid public EVM address first.');
+      setCoinGeckoError('Enter a valid public EVM address first.');
+      return;
+    }
+
+    setLoading(true);
+    setCoinGeckoLoading(true);
+    const rpcTask = (async () => {
+      try {
+        const response = await fetch('/api/wallet-report?address=' + encodeURIComponent(wallet), { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not retrieve RPC balances.');
+        setReport(data as Report);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not retrieve RPC balances.');
+      } finally {
+        setLoading(false);
+      }
+    })();
+    const tokenTask = (async () => {
+      try {
+        const params = new URLSearchParams({ address: wallet, networks: 'eth,base,bsc', per_page: '100', page: '1' });
+        const response = await fetch('/api/wallet-balances?' + params.toString(), { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not retrieve token balances.');
+        setCoinGeckoReport(data as CoinGeckoReport);
+      } catch (e) {
+        setCoinGeckoError(e instanceof Error ? e.message : 'Could not retrieve token balances.');
+      } finally {
+        setCoinGeckoLoading(false);
+      }
+    })();
+    await Promise.all([rpcTask, tokenTask]);
+  }
+
   return <>
     <section className="panel">
       <h2>Create a public wallet report</h2>
@@ -77,11 +119,16 @@ export default function WalletMonitor() {
         </div>
       </form>
       {error ? <div className="notice error" role="alert">{error}</div> : null}
-      <p className="hint">The RPC report verifies native coin balances and any server-configured ERC-20 contracts. CoinGecko provides a separate token-discovery and USD-estimate report.</p>
+      <p className="hint">Refresh both sources together for the latest available public-chain quantities and token-value estimates. No wallet connection or transaction is required.</p>
+      <button className="primary-button" type="button" disabled={loading || coinGeckoLoading} onClick={refreshAllFunds}>
+        {loading || coinGeckoLoading ? 'Refreshing live funds…' : 'Refresh all live funds'}
+      </button>
+      <div className="actions">
       <button className="secondary-button" type="button" disabled={coinGeckoLoading} onClick={runCoinGecko}>
         {coinGeckoLoading ? 'Fetching CoinGecko balances…' : 'Fetch CoinGecko token balances'}
       </button>
       <p className="hint">CoinGecko coverage and pricing depend on supported networks, API plan, and token data availability. The first page requests up to 100 holdings.</p>
+      </div>
       {coinGeckoError ? <div className="notice error" role="alert">{coinGeckoError}</div> : null}
     </section>
     {coinGeckoReport ? <section className="panel" aria-live="polite">
