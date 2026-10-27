@@ -6,8 +6,8 @@ export default function HomePage() {
       <header className="topbar">
         <div>
           <div className="eyebrow">Read-only Web3 tools</div>
-          <h1>Wallet Monitor</h1>
-          <p className="muted">Public-chain balance checks plus optional CoinGecko token and USD estimates for Ethereum, Base and BNB Chain.</p>
+          <h1>Live Funds Monitor</h1>
+          <p className="muted">Live read-only balances and token-value estimates for Ethereum, Base and BNB Smart Chain.</p>
         </div>
         <span className="chip">Read only</span>
       </header>
