@@ -1,6 +1,6 @@
 # Web3 Wallet Monitor MVP
 
-A read-only EVM wallet monitor for Ethereum Mainnet, Base Mainnet and BNB Smart Chain. It provides a direct RPC report for native coins and server-allowlisted ERC-20 tokens, plus an optional CoinGecko multi-network token-balance report with estimated USD values. It does not connect to wallets, sign transactions, or move funds.
+A read-only live-funds dashboard for Ethereum Mainnet, Base Mainnet and BNB Smart Chain. It provides a direct RPC report for native coins and server-allowlisted ERC-20 tokens, plus an optional CoinGecko multi-network token-balance report with estimated USD values. It does not connect to wallets, sign transactions, or move funds.
 
 ## Setup on Chromebook Linux
 
@@ -21,7 +21,7 @@ A read-only EVM wallet monitor for Ethereum Mainnet, Base Mainnet and BNB Smart 
    ```bash
    npm run dev:web
    ```
-6. Open `http://localhost:3000`, enter a public EVM address, and choose either report button.
+6. Open `http://localhost:3000`, enter a public EVM address, and choose **Refresh all live funds** to query both the configured RPC endpoints and CoinGecko. You can also refresh the CoinGecko report alone.
 
 ## Server-side environment variables
 
@@ -54,6 +54,12 @@ Never prefix secrets with `NEXT_PUBLIC_`. Never commit `.env.local` or API keys.
 - Displays reported quantities, USD price/value estimates, token type, network and raw balance.
 - The current UI requests page 1 with up to 100 holdings. Use pagination for larger portfolios.
 - CoinGecko's coverage and pricing depend on its supported networks, token resolution and API plan. Values are estimates, not guaranteed sale proceeds or withdrawal balances. This endpoint does not prove ownership.
+
+## Live refresh behavior
+
+- **Refresh all live funds** requests the direct RPC report and CoinGecko token report in parallel, with independent errors so one provider can fail while the other succeeds.
+- The dashboard refreshes only when requested; it does not poll in the background or imply streaming updates.
+- RPC results verify chain IDs and return native coin balances plus only the ERC-20 contracts explicitly allowlisted in server environment variables. CoinGecko supplies broader token discovery and estimated USD values where available.
 
 ## Before public launch
 
