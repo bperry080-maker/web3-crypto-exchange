@@ -26,20 +26,12 @@ async function getJson(url: string, headers: HeadersInit = {}) {
 }
 
 export async function GET() {
-  const proKey = process.env.COINGECKO_PRO_API_KEY;
-  const demoKey = process.env.COINGECKO_DEMO_API_KEY;
-  const apiBase = proKey
-    ? 'https://pro-api.coingecko.com/api/v3'
-    : 'https://api.coingecko.com/api/v3';
-  const headers: HeadersInit = proKey
-    ? { 'x-cg-pro-api-key': proKey, accept: 'application/json' }
-    : demoKey
-      ? { 'x-cg-demo-api-key': demoKey, accept: 'application/json' }
-      : { accept: 'application/json' };
+  const apiBase = 'https://api.coingecko.com/api/v3';
+  const headers: HeadersInit = { accept: 'application/json' };
 
   const warnings: string[] = [];
   let prices: CoinPrice[] = [];
-  let priceSource = proKey ? 'CoinGecko Pro API' : demoKey ? 'CoinGecko Demo API' : 'CoinGecko public API';
+  let priceSource = 'CoinGecko keyless public API';
 
   try {
     const ids = 'bitcoin,ethereum,chainlink,tether';
@@ -58,7 +50,7 @@ export async function GET() {
       last_updated: row.last_updated == null ? null : String(row.last_updated),
     }));
   } catch {
-    warnings.push('CoinGecko market prices are unavailable. Check the API key, plan access, rate limits, or upstream status.');
+    warnings.push('CoinGecko public market prices are temporarily unavailable. Public rate limits may apply; try again later.');
     priceSource = 'unavailable';
   }
 
