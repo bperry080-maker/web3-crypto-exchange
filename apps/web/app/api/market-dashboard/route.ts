@@ -69,7 +69,7 @@ export async function GET() {
 
   try {
     const payload = await getJson(
-      'https://api.geckoterminal.com/api/v2/networks/trending_pools?page=1',
+      'https://api.geckoterminal.com/api/v2/networks/eth/trending_pools?page=1&include=base_token,quote_token,dex',
       { accept: 'application/json' },
     );
     const included = Array.isArray(payload?.included) ? payload.included : [];
@@ -98,7 +98,7 @@ export async function GET() {
       };
     });
   } catch {
-    warnings.push('Trending pool data is unavailable from GeckoTerminal right now.');
+    warnings.push('Ethereum trending pool data is temporarily unavailable from GeckoTerminal.');
   }
 
   return NextResponse.json({
