@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       }
       try {
         const history = await getJson(
-          `${COINGECKO}/coins/${encodeURIComponent(assetPlatformId)}/contract/${encodeURIComponent(address)}/market_chart?vs_currency=usd&days=7`,
+          `${coinGeckoBase}/coins/${encodeURIComponent(assetPlatformId)}/contract/${encodeURIComponent(address)}/market_chart?vs_currency=usd&days=7`,
           cgHeaders,
         );
         historyPoints = Array.isArray(history?.prices) ? history.prices.length : 0;
