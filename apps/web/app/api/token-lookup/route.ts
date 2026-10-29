@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     : demoKey
       ? { 'x-cg-demo-api-key': demoKey, accept: 'application/json' }
       : { accept: 'application/json' };
-  let listed: { id?: string; name?: string; symbol?: string } | null = null;
+  let listed: any = null;
   let coinGeckoStatus = 'not_checked';
   let price: unknown = null;
   let historyPoints: number | null = null;
@@ -112,6 +112,11 @@ export async function GET(request: NextRequest) {
       id: listed?.id ?? null,
       name: listed?.name ?? null,
       symbol: listed?.symbol ?? null,
+      imageUrl: listed?.image?.small ?? listed?.image?.thumb ?? null,
+      description: typeof listed?.description?.en === 'string' ? listed.description.en.replace(/<[^>]*>/g, '').slice(0, 1200) : null,
+      websites: Array.isArray(listed?.links?.homepage) ? listed.links.homepage.filter((value: unknown) => typeof value === 'string' && value.startsWith('https://')).slice(0, 5) : [],
+      twitterHandle: typeof listed?.links?.twitter_screen_name === 'string' ? listed.links.twitter_screen_name : null,
+      categories: Array.isArray(listed?.categories) ? listed.categories.slice(0, 8) : [],
       priceUsdResponse: price,
       sevenDayPricePoints: historyPoints,
     },
