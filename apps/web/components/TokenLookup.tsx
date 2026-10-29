@@ -9,6 +9,7 @@ type LookupResult = {
   generatedAt: string;
   coinGecko: {
     status: string; id: string | null; name: string | null; symbol: string | null;
+    imageUrl: string | null; description: string | null; websites: string[]; twitterHandle: string | null; categories: string[];
     priceUsdResponse: unknown; sevenDayPricePoints: number | null;
   };
   geckoTerminal: { name: string | null; symbol: string | null; gtScore: number | null; isHoneypot: boolean | null } | null;
@@ -76,6 +77,11 @@ export default function TokenLookup() {
           <p><strong>Status:</strong> {result.coinGecko.status.replaceAll('_', ' ')}</p>
           <p><strong>Token:</strong> {result.coinGecko.name ?? 'Not confirmed'} {result.coinGecko.symbol ? '(' + result.coinGecko.symbol + ')' : ''}</p>
           <p><strong>Coin ID:</strong> {result.coinGecko.id ?? 'Unavailable'}</p>
+          {result.coinGecko.imageUrl ? <p><img src={result.coinGecko.imageUrl} alt="" width={32} height={32} /></p> : null}
+          {result.coinGecko.description ? <p>{result.coinGecko.description}</p> : null}
+          {result.coinGecko.websites.length ? <p><strong>Official links:</strong> {result.coinGecko.websites.map((url) => <span key={url}><a href={url} target="_blank" rel="noreferrer">{new URL(url).hostname}</a> </span>)}</p> : null}
+          {result.coinGecko.twitterHandle ? <p><strong>X:</strong> @{result.coinGecko.twitterHandle}</p> : null}
+          {result.coinGecko.categories.length ? <p><strong>Categories:</strong> {result.coinGecko.categories.join(', ')}</p> : null}
           <p><strong>7-day price points:</strong> {result.coinGecko.sevenDayPricePoints ?? 'Unavailable'}</p>
           <details><summary>Raw price response</summary><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(result.coinGecko.priceUsdResponse, null, 2) ?? 'Unavailable'}</pre></details>
         </article>
