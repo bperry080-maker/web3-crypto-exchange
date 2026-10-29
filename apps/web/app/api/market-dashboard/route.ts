@@ -82,9 +82,9 @@ export async function GET() {
     );
     const included = Array.isArray(payload?.included) ? payload.included : [];
     const tokenById = new Map<string, string>(
-      included.filter((item: any) => item?.type === 'token').map((item: any) => [
+      included.filter((item: any) => item?.type === 'token').map((item: any): [string, string] => [
         String(item.id),
-        `${String(item.attributes?.symbol ?? 'TOKEN').toUpperCase()}`,
+        String(item.attributes?.symbol ?? 'TOKEN').toUpperCase(),
       ]),
     );
     pools = (Array.isArray(payload?.data) ? payload.data : []).slice(0, 8).map((pool: any) => {
