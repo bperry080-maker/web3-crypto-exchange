@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic';
 
 const IDENTIFIER = /^[a-z0-9_-]{1,80}$/i;
 const ADDRESS = /^0x[a-fA-F0-9]{40}$/;
-const COINGECKO = 'https://api.coingecko.com/api/v3';
+const COINGECKO_PRO = 'https://pro-api.coingecko.com/api/v3';
+const COINGECKO_PUBLIC = 'https://api.coingecko.com/api/v3';
 const GECKOTERMINAL = 'https://api.geckoterminal.com/api/v2';
 
 async function getJson(url: string, headers: HeadersInit = {}) {
@@ -31,8 +32,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const apiKey = process.env.COINGECKO_DEMO_API_KEY;
-  const cgHeaders: HeadersInit = apiKey ? { 'x-cg-demo-api-key': apiKey, accept: 'application/json' } : { accept: 'application/json' };
+  const proKey = process.env.COINGECKO_PRO_API_KEY;
+  const demoKey = process.env.COINGECKO_DEMO_API_KEY;
+  const coinGeckoBase = proKey ? COINGECKO_PRO : COINGECKO_PUBLIC;
+  const apiKey = proKey ?? demoKey;
+  const cgHeaders: HeadersInit = proKey
+    ? { 'x-cg-pro-api-key': proKey, accept: 'application/json' }
+    : demoKey
+      ? { 'x-cg-demo-api-key': demoKey, accept: 'application/json' }
+      : { accept: 'application/json' };
   let listed: { id?: string; name?: string; symbol?: string } | null = null;
   let coinGeckoStatus = 'not_checked';
   let price: unknown = null;
@@ -41,13 +49,13 @@ export async function GET(request: NextRequest) {
   let pools: Array<{ name: string; liquidityUsd: number | null }> = [];
   const warnings: string[] = [];
 
-  if (apiKey) {
+  if (apiKey || !proKey) {
     try {
-      listed = await getJson(`${COINGECKO}/coins/${encodeURIComponent(assetPlatformId)}/contract/${encodeURIComponent(address)}`, cgHeaders);
+      listed = await getJson(`${coinGeckoBase}/coins/${encodeURIComponent(assetPlatformId)}/contract/${encodeURIComponent(address)}`, cgHeaders);
       coinGeckoStatus = 'listed';
       try {
         price = await getJson(
-          `${COINGECKO}/simple/token_price/${encodeURIComponent(assetPlatformId)}?contract_addresses=${encodeURIComponent(address)}&vs_currencies=usd&include_market_cap=true`,
+          `${coinGeckoBase}/simple/token_price/${encodeURIComponent(assetPlatformId)}?contract_addresses=${encodeURIComponent(address)}&vs_currencies=usd&include_market_cap=true`,
           cgHeaders,
         );
       } catch {
@@ -68,7 +76,7 @@ export async function GET(request: NextRequest) {
     }
   } else {
     coinGeckoStatus = 'api_key_missing';
-    warnings.push('Set COINGECKO_DEMO_API_KEY in server-side environment variables to enable curated CoinGecko lookups.');
+    warnings.push('Set COINGECKO_PRO_API_KEY or COINGECKO_DEMO_API_KEY in server-side environment variables for authenticated CoinGecko lookups.');
   }
 
   try {
