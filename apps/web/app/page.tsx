@@ -1,4 +1,5 @@
 import WalletMonitor from '../components/WalletMonitor';
+import KrakenBalancePanel from '../components/KrakenBalancePanel';
 
 export default function HomePage() {
   return (
@@ -7,13 +8,14 @@ export default function HomePage() {
         <div>
           <div className="eyebrow">Read-only Web3 tools</div>
           <h1>Wallet Monitor</h1>
-          <p className="muted">A public-chain balance report for Ethereum, Base and BNB Chain.</p>
+          <p className="muted">Public-chain balances plus protected Kraken exchange balance monitoring.</p>
         </div>
         <span className="chip">Read only</span>
       </header>
       <WalletMonitor />
+      <KrakenBalancePanel />
       <footer className="footer-note">
-        Public blockchain data only. This report does not connect a wallet, sign transactions, or move funds.
+        Public blockchain and read-only exchange data only. This report does not connect a wallet, sign transactions, place orders, or move funds.
         Token coverage depends on RPC provider support. USD valuations are not included in this first version.
       </footer>
     </main>
