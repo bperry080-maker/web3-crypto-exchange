@@ -93,9 +93,8 @@ export async function GET() {
       const baseId = rel?.base_token?.data?.id;
       const quoteId = rel?.quote_token?.data?.id;
       return {
-        id: String(pool?.id ?? attrs.address ?? attrs.name ?? Math.random()),
+        id: String(pool?.id ?? attrs.address ?? attrs.name ?? 'pool'),
         network: String(pool?.id ?? '').split('_')[0] || 'unknown',
-        name: String(attrs.name ?? 'Unnamed pool'),
         address: String(attrs.address ?? ''),
         baseTokenPriceUsd: attrs.base_token_price_usd == null ? null : Number(attrs.base_token_price_usd),
         quoteTokenPriceUsd: attrs.quote_token_price_usd == null ? null : Number(attrs.quote_token_price_usd),
@@ -103,7 +102,7 @@ export async function GET() {
         volume24hUsd: attrs.volume_usd?.h24 == null ? null : Number(attrs.volume_usd.h24),
         reserveUsd: attrs.reserve_in_usd == null ? null : Number(attrs.reserve_in_usd),
         dex: rel?.dex?.data?.id ? String(rel.dex.data.id) : null,
-        name: String(attrs.name ?? [tokenById.get(baseId), tokenById.get(quoteId)].filter(Boolean).join(' / ') || 'Unnamed pool'),
+        name: String(attrs.name ?? ([tokenById.get(baseId), tokenById.get(quoteId)].filter(Boolean).join(' / ') || 'Unnamed pool')),
       };
     });
   } catch {
