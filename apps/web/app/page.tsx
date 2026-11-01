@@ -2,6 +2,7 @@ import WalletMonitor from '../components/WalletMonitor';
 import WalletIntelligence from '../components/WalletIntelligence';
 import MarketDashboard from '../components/MarketDashboard';
 import TokenLookup from '../components/TokenLookup';
+import WalletConnectButton from '../components/WalletConnectButton';
 
 export default function HomePage() {
   return (
@@ -12,14 +13,17 @@ export default function HomePage() {
           <h1>Chainlink Wallet Monitor</h1>
           <p className="muted">Public-chain balances, wallet intelligence, token research, market prices and trending DEX pools.</p>
         </div>
-        <span className="chip">Read only</span>
+        <div className="topbar-actions">
+          <WalletConnectButton />
+          <span className="chip">Read-only tools</span>
+        </div>
       </header>
       <WalletMonitor />
       <WalletIntelligence />
       <MarketDashboard />
       <TokenLookup />
       <footer className="footer-note">
-        Public blockchain and market data only. These tools do not connect a wallet, sign transactions, or move funds.
+        Wallet connection is optional. Connecting does not sign transactions or move funds. Public blockchain and market data are used for the read-only tools.
         Prices, pool metrics, PnL and token metadata may be delayed, unavailable, or incomplete.
       </footer>
     </main>
