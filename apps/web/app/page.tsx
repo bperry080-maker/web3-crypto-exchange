@@ -2,6 +2,7 @@ import WalletMonitor from '../components/WalletMonitor';
 import WalletPanel from '../components/WalletPanel';
 import MarketDashboard from '../components/MarketDashboard';
 import TokenLookup from '../components/TokenLookup';
+import TonJettonDashboard from '../components/TonJettonDashboard';
 
 export default function HomePage() {
   return (
@@ -15,6 +16,7 @@ export default function HomePage() {
         <span className="chip">User approval required</span>
       </header>
       <WalletPanel />
+      <TonJettonDashboard />
       <WalletMonitor />
       <MarketDashboard />
       <TokenLookup />
