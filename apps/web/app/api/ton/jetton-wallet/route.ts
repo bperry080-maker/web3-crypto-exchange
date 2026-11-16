@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const result = await client.runMethod(jettonWallet, 'get_wallet_data');
     const stack = result.stack;
     const balance = stack.readBigNumber().toString();
-    const owner = stack.readAddress().toString({ bounceable: false });
+    const owner = stack.readAddress().toRawString();
     const master = stack.readAddress().toString({ bounceable: false });
     const walletCodeBocHex = stack.readCell().toBoc().toString('hex');
 
