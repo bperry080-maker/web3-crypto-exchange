@@ -3,6 +3,7 @@ import WalletPanel from '../components/WalletPanel';
 import MarketDashboard from '../components/MarketDashboard';
 import TokenLookup from '../components/TokenLookup';
 import TonJettonDashboard from '../components/TonJettonDashboard';
+import TelegramWalletReadOnlyPanel from '../components/TelegramWalletReadOnlyPanel';
 
 export default function HomePage() {
   return (
@@ -17,6 +18,7 @@ export default function HomePage() {
       </header>
       <WalletPanel />
       <TonJettonDashboard />
+      <TelegramWalletReadOnlyPanel />
       <WalletMonitor />
       <MarketDashboard />
       <TokenLookup />
